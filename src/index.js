@@ -9,7 +9,7 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 const TOKEN = process.env.TOKEN
 
 client.on('ready', () => {
-  console.log(`Logged in as ${client.user.tag}!`);
+	console.log(`Logged in as ${client.user.tag}!`);
 });
 
 client.commands = new Collection()
@@ -19,30 +19,30 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const foldersPath = path.join(__dirname, 'commands');
 const commandFolders = fs.readdirSync(foldersPath)
 
-for(const folder of commandFolders) {
+for (const folder of commandFolders) {
 	const commandsPath = path.join(foldersPath, folder);
 	const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'))
 
 	for (const file of commandFiles) {
-	const filePath = path.join(commandsPath, file);
-	import(filePath)
-		.then(module => {
-			const command = module.default
-			if ('data' in command && 'execute' in command) {
-				client.commands.set(command.data.name, command);
-			} else {
-				console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
-			}
-		})
-		.catch(error => {
-			console.error(`Error importing module at ${filePath}:`, error);
-		});
-}
+		const filePath = path.join(commandsPath, file);
+		import(filePath)
+			.then(module => {
+				const command = module.default
+				if ('data' in command && 'execute' in command) {
+					client.commands.set(command.data.name, command);
+				} else {
+					console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+				}
+			})
+			.catch(error => {
+				console.error(`Error importing module at ${filePath}:`, error);
+			});
+	}
 }
 
 client.on(Events.InteractionCreate, async interaction => {
 	if (!interaction.isChatInputCommand()) return;
-	console.log(interaction);
+
 	const command = interaction.client.commands.get(interaction.commandName);
 
 	if (!command) {
@@ -51,7 +51,13 @@ client.on(Events.InteractionCreate, async interaction => {
 	}
 
 	try {
-		await command.execute(interaction);
+		if (['defer', 'deathroll'].some(commandName => commandName === interaction.command)) {
+			await interaction.deferReply();
+			await command.execute(interaction);
+		} else {
+			await command.execute(interaction);
+
+		}
 	} catch (error) {
 		console.error(error);
 		if (interaction.replied || interaction.deferred) {
