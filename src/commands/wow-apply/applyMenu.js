@@ -65,9 +65,52 @@ export default {
 			.addComponents(menu)
 
 
-		await interaction.reply({
+		const response = await interaction.reply({
 			content: 'Select a class to start your apply',
 			components: [row]
 		});
+
+		const collectorFilter = i => i.user.id === interaction.user.id;
+
+		try {
+			const confirmation = await response.awaitMessageComponent({ filter: collectorFilter, time: 60000 });
+
+			const roleMenu = new StringSelectMenuBuilder()
+				.setCustomId('role')
+				.setPlaceholder('Please, select your rol')
+				.addOptions(
+					new StringSelectMenuOptionBuilder()
+						.setLabel('Tank')
+						.setValue('Tank')
+						.setEmoji('<:wowtank:1151832715784626176>'),
+					new StringSelectMenuOptionBuilder()
+						.setLabel('Healer')
+						.setValue('Healer')
+						.setEmoji('<:wowheal:1151832713049952287>'),
+					new StringSelectMenuOptionBuilder()
+						.setLabel('DPS')
+						.setValue('DPS')
+						.setEmoji('<:wowdps:1151832708734009404>')
+				)
+
+			const row = new ActionRowBuilder()
+				.addComponents(roleMenu)
+
+			const response2 = await confirmation.update({ content: `Your selection is ${confirmation.values[0]}. Please, now select your role`, components: [row] });
+
+			try {
+				const confirmation2 = await response2.awaitMessageComponent({ filter: collectorFilter, time: 60000 });
+
+				await confirmation2.update({ content: `Your selection is ${confirmation.values[0]} - ${confirmation2.values[0]}. WIP: Continue form`, components: [] })
+
+			} catch (e) {
+				console.log(e)
+				await interaction.editReply({ content: 'Confirmation not received within 1 minute, cancelling', components: [] });
+			}
+
+		} catch (e) {
+			console.log(e)
+			await interaction.editReply({ content: 'Confirmation not received within 1 minute, cancelling', components: [] });
+		}
 	},
 };
