@@ -5,7 +5,8 @@ import { dirname } from 'path';
 import { fileURLToPath } from 'url';
 import * as path from 'path';
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+// TO GET MESSAGES CONTENT FROM COLLECTORS IS MANDATORY TO SET THE INTENT AND PRIVACY ON DEV PORTAL
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildMessageReactions, GatewayIntentBits.MessageContent] });
 const TOKEN = process.env.TOKEN
 
 client.on('ready', () => {
