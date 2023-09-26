@@ -1,4 +1,5 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, SlashCommandBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, TextInputStyle } from 'discord.js';
+import { ActionRowBuilder, MessageCollector, SlashCommandBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } from 'discord.js';
+import { selectRolService } from '../../wow-apply/services/selectRol.js';
 
 export default {
 	data: new SlashCommandBuilder()
@@ -73,41 +74,54 @@ export default {
 		const collectorFilter = i => i.user.id === interaction.user.id;
 
 		try {
-			const confirmation = await response.awaitMessageComponent({ filter: collectorFilter, time: 60000 });
+			const classConfirmation = await response.awaitMessageComponent({ filter: collectorFilter, time: 60000 });
 
-			const roleMenu = new StringSelectMenuBuilder()
-				.setCustomId('role')
-				.setPlaceholder('Please, select your rol')
-				.addOptions(
-					new StringSelectMenuOptionBuilder()
-						.setLabel('Tank')
-						.setValue('Tank')
-						.setEmoji('<:wowtank:1151832715784626176>'),
-					new StringSelectMenuOptionBuilder()
-						.setLabel('Healer')
-						.setValue('Healer')
-						.setEmoji('<:wowheal:1151832713049952287>'),
-					new StringSelectMenuOptionBuilder()
-						.setLabel('DPS')
-						.setValue('DPS')
-						.setEmoji('<:wowdps:1151832708734009404>')
-				)
+			const response2 = await selectRolService(classConfirmation)
 
-			const row = new ActionRowBuilder()
-				.addComponents(roleMenu)
+			const rolConfirmation = await response2.awaitMessageComponent({ filter: collectorFilter, time: 60000 });
 
-			const response2 = await confirmation.update({ content: `Your selection is ${confirmation.values[0]}. Please, now select your role`, components: [row] });
+			const channel = rolConfirmation.channel
 
-			try {
-				const confirmation2 = await response2.awaitMessageComponent({ filter: collectorFilter, time: 60000 });
+			await rolConfirmation.reply('Please, now write your item level.')
 
-				await confirmation2.update({ content: `Your selection is ${confirmation.values[0]} - ${confirmation2.values[0]}. WIP: Continue form`, components: [] })
+			const messageCollectorFilter = m => m.author.id === interaction.user.id
+			const collector = channel.createMessageCollector({
+				filter: messageCollectorFilter, time: 60000, max: 1
+			})
 
-			} catch (e) {
-				console.log(e)
-				await interaction.editReply({ content: 'Confirmation not received within 1 minute, cancelling', components: [] });
-			}
+			let gs
+			let armoryLink
+			collector.on('collect', message => {
+				gs = message.content
+				collector.stop()
+			})
 
+			collector.on('end', async collected => {
+				if (!gs) await channel.send('No item level message sent. Apply not submited, please try again.')
+				else {
+					const armoryCollector = channel.createMessageCollector({ filter: messageCollectorFilter, time: 60000, max: 1 })
+					await channel.send('Now, send your armory link')
+
+					armoryCollector.on('collect', async message => {
+						armoryLink = message.content
+
+						const summary = `Your apply has been submited.
+						Here is the summary of your application:
+						Class: ${classConfirmation.values[0]}
+						Role: ${rolConfirmation.values[0]}
+						Item Level: ${gs}
+						Armory link: ${armoryLink}`
+
+						armoryCollector.stop()
+
+						await channel.send(summary)
+					})
+
+					armoryCollector.on('end', async collected => {
+						if (!armoryLink) await channel.send('No armory link received. Apply not submited. Please, try again.')
+					})
+				}
+			})
 		} catch (e) {
 			console.log(e)
 			await interaction.editReply({ content: 'Confirmation not received within 1 minute, cancelling', components: [] });
